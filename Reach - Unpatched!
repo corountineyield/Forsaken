@@ -146,8 +146,23 @@ local function IsPlayerInKillers(TargetPlayer)
     return false
 end
 
+local function IsPlayerInSurvivors(TargetPlayer)
+    local PlayersFolder = workspace.Players
+    
+    if PlayersFolder:FindFirstChild("Survivors") then
+        for _, PlayerObj in pairs(PlayersFolder.Survivors:GetChildren()) do
+            if PlayerObj:GetAttribute("Username") == TargetPlayer then
+                return true
+            end
+        end
+    end
+    
+    return false
+end
+
 local RNG = Random.new();
 local IsKiller = false;
+local IsSurvivor = false;
 
 task.spawn(function()
     while true do
@@ -155,11 +170,21 @@ task.spawn(function()
         local PlayerName = Player.Name
         
         IsKiller = false
+        IsSurvivor = false
         
         if PlayersFolder:FindFirstChild("Killers") then
             for _, PlayerObj in pairs(PlayersFolder.Killers:GetChildren()) do
                 if PlayerObj:GetAttribute("Username") == PlayerName then
                     IsKiller = true
+                    break
+                end
+            end
+        end
+        
+        if PlayersFolder:FindFirstChild("Survivors") then
+            for _, PlayerObj in pairs(PlayersFolder.Survivors:GetChildren()) do
+                if PlayerObj:GetAttribute("Username") == PlayerName then
+                    IsSurvivor = true
                     break
                 end
             end
@@ -172,7 +197,7 @@ end)
 while true do
     task.wait()
     
-    if not IsKiller then
+    if not IsKiller and not IsSurvivor then
         continue
     end
     
@@ -192,8 +217,7 @@ while true do
     end
 
     local Target;
-    local NearestDist = 25; --// Edit if needed.
-
+    local NearestDist = 9;
 
     local function Loop(T)
         for _,v in T do
@@ -211,7 +235,11 @@ while true do
                 if TeamCheck then
                     local TargetPlayer = Players:GetPlayerFromCharacter(v)
                     if TargetPlayer then
-                        PassedTeamCheck = not IsPlayerInKillers(TargetPlayer.Name)
+                        if IsKiller then
+                            PassedTeamCheck = not IsPlayerInKillers(TargetPlayer.Name)
+                        elseif IsSurvivor then
+                            PassedTeamCheck = IsPlayerInKillers(TargetPlayer.Name)
+                        end
                     end
                 end
                 
