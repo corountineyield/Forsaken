@@ -217,7 +217,7 @@ while true do
     end
 
     local Target;
-    local NearestDist = 9;
+    local NearestDist = 25;
 
     local function Loop(T)
         for _,v in T do
