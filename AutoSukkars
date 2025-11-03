@@ -5,43 +5,39 @@ getgenv().AutoSukkars = getgenv().AutoSukkars or {
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
-
+local HttpService = game:GetService("HttpService")
 local Player = Players.LocalPlayer
-local Character = Player.Character or Player.CharacterAdded:Wait()
-local Humanoid = Character:WaitForChild("Humanoid")
-local Animator = Humanoid:WaitForChild("Animator")
 
-local Survivor = false
 local Activated = false
 local Count = 0
 
 local function CheckSurvivor()
     local WorkspacePlayers = workspace:FindFirstChild("Players")
     if not WorkspacePlayers then 
-        Survivor = false
         return false 
     end
     
     local Survivors = WorkspacePlayers:FindFirstChild("Survivors")
     if not Survivors then 
-        Survivor = false
         return false 
     end
     
     for _, SurvivorModel in pairs(Survivors:GetChildren()) do
         if SurvivorModel:GetAttribute("Username") == Player.Name then
-            Survivor = true
             return true
         end
     end
     
-    Survivor = false
     return false
 end
 
 local function FarmCurrency()
     if Activated then return end
     Activated = true
+    
+    local Character = Player.Character or Player.CharacterAdded:Wait()
+    local Humanoid = Character:WaitForChild("Humanoid")
+    local Animator = Humanoid:WaitForChild("Animator")
     
     local Animation = Instance.new("Animation")
     Animation.AnimationId = "rbxassetid://75804462760596"
@@ -52,40 +48,72 @@ local function FarmCurrency()
     task.wait(5)
     
     local Map = workspace:FindFirstChild("Map")
-    if Map then
-        local Ingame = Map:FindFirstChild("Ingame")
-        if Ingame then
-            local CurrencyLocations = Ingame:FindFirstChild("CurrencyLocations")
-            if CurrencyLocations then
-                for _, Location in pairs(CurrencyLocations:GetChildren()) do
-                    if Count >= getgenv().AutoSukkars.TeleportAmount then break end
-                    
-                    if Character and Character:FindFirstChild("HumanoidRootPart") then
-                        Character.HumanoidRootPart.CFrame = Location.CFrame
-                        Count = Count + 1
-                        task.wait(0.1)
-                    end
+    if not Map then 
+        Activated = false
+        return 
+    end
+    
+    local Ingame = Map:FindFirstChild("Ingame")
+    if not Ingame then 
+        Activated = false
+        return 
+    end
+    
+    local CurrencyLocations = Ingame:FindFirstChild("CurrencyLocations")
+    if not CurrencyLocations then 
+        Activated = false
+        return 
+    end
+    
+    -- Keep track of visited locations
+    local VisitedLocations = {}
+    
+    -- Keep checking for new currency locations until we hit the limit
+    while Count < getgenv().AutoSukkars.TeleportAmount do
+        local FoundNew = false
+        
+        for _, Location in pairs(CurrencyLocations:GetChildren()) do
+            if not VisitedLocations[Location] and Count < getgenv().AutoSukkars.TeleportAmount then
+                Character = Player.Character
+                if Character and Character:FindFirstChild("HumanoidRootPart") then
+                    Character.HumanoidRootPart.CFrame = Location.CFrame
+                    VisitedLocations[Location] = true
+                    Count = Count + 1
+                    FoundNew = true
+                    task.wait(0.1)
+                else
+                    break
                 end
             end
         end
+        
+        -- If no new locations found, wait a bit for more to spawn
+        if not FoundNew then
+            task.wait(0.5)
+        end
     end
     
+    -- Server hop after collecting enough
     if Count >= getgenv().AutoSukkars.TeleportAmount then
         local ServerJobId = game.JobId
         local PlaceId = game.PlaceId
         
         local Success = false
         while not Success do
-            local Servers = game:GetService("HttpService"):JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. PlaceId .. "/servers/Public?sortOrder=Desc&limit=100"))
+            local success, Servers = pcall(function()
+                return HttpService:JSONDecode(game:HttpGetAsync("https://games.roblox.com/v1/games/" .. PlaceId .. "/servers/Public?sortOrder=Desc&limit=100"))
+            end)
             
-            for _, Server in pairs(Servers.data) do
-                if Server.id ~= ServerJobId and Server.playing < Server.maxPlayers then
-                    local TeleportSuccess = pcall(function()
-                        TeleportService:TeleportToPlaceInstance(PlaceId, Server.id, Player)
-                    end)
-                    if TeleportSuccess then
-                        Success = true
-                        break
+            if success and Servers and Servers.data then
+                for _, Server in pairs(Servers.data) do
+                    if Server.id ~= ServerJobId and Server.playing < Server.maxPlayers then
+                        local TeleportSuccess = pcall(function()
+                            TeleportService:TeleportToPlaceInstance(PlaceId, Server.id, Player)
+                        end)
+                        if TeleportSuccess then
+                            Success = true
+                            break
+                        end
                     end
                 end
             end
