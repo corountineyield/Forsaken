@@ -110,7 +110,7 @@ local AttackAnimations = {
 	'rbxassetid://124243639579224', --// CorruptNature, c00lkidd, Skin: MafiosoC00l
 	'rbxassetid://70371667919898', --// Attack, c00lkidd, Skin: MafiosoC00l
 	'rbxassetid://131543461321709', --// Attack, c00lkidd, Skin: SaviorC00l
-	'rbxassetid://136323728355613' --// Noli swing
+	'rbxassetid://106538427162796' --// Swing, Noli
 };
 
 local function DoWallCheck(From, To)
@@ -217,7 +217,7 @@ while true do
     end
 
     local Target;
-    local NearestDist = 25;
+    local NearestDist = 9;
 
     local function Loop(T)
         for _,v in T do
