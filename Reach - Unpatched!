@@ -18,7 +18,7 @@ end);
 local WallCheck = true; --// Disable when needed.
 local FaceCheck = true; --// Disable when needed.
 local TeamCheck = true; --// Disable when needed.
-local FaceCheckValue = 0.5; --// Edit if needed.
+local FaceCheckValue = 0; --// Edit if needed.
 
 local AttackAnimations = {
 	'rbxassetid://131430497821198', --// MassInfection, 1x1x1x1
