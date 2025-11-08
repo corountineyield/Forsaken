@@ -3,7 +3,7 @@ repeat task.wait() until game:IsLoaded();
 local Players = game:GetService('Players');
 local Player = Players.LocalPlayer;
 local PlayerGui = Player:WaitForChild("PlayerGui");
-local Character = Player.Character or Player.CharacterAdded:Wait();
+local Character = Player.Character; Character = Character or Player.CharacterAdded:Wait();
 local Humanoid = Character:WaitForChild("Humanoid");
 local Animator = Humanoid:WaitForChild("Animator");
 local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart");
