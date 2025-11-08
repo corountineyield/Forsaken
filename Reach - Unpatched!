@@ -3,7 +3,8 @@ repeat task.wait() until game:IsLoaded();
 local Players = game:GetService('Players');
 local Player = Players.LocalPlayer;
 local PlayerGui = Player:WaitForChild("PlayerGui");
-local Character = Player.Character; Character = Character or Player.CharacterAdded:Wait();
+repeat task.wait() until Player.Character
+local Character = Player.Character
 local Humanoid = Character:WaitForChild("Humanoid");
 local Animator = Humanoid:WaitForChild("Animator");
 local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart");
@@ -111,7 +112,7 @@ local AttackAnimations = {
 	'rbxassetid://70371667919898',
 	'rbxassetid://131543461321709',
 	'rbxassetid://106538427162796',
-    'rbxassetid://114506382930939
+	'rbxassetid://114506382930939'
 };
 
 local function DoWallCheck(From, To)
@@ -261,7 +262,7 @@ while true do
 
     local OldVelocity = HumanoidRootPart.Velocity;
     local NeededVelocity =
-    (Target.HumanoidRootPart.Position + vector.create(
+    (Target.HumanoidRootPart.Position + Vector3.new(
         RNG:NextNumber(-1.5, 1.5),
         0,
         RNG:NextNumber(-1.5, 1.5)
