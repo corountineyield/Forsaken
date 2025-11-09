@@ -1,6 +1,7 @@
 repeat task.wait() until game:IsLoaded();
 
 local Players = game:GetService('Players');
+local RunService = game:GetService('RunService');
 local Player = Players.LocalPlayer;
 local PlayerGui = Player:WaitForChild("PlayerGui");
 repeat task.wait() until Player.Character
@@ -197,15 +198,13 @@ task.spawn(function()
     end
 end)
 
-while true do
-    task.wait()
-    
+RunService.Heartbeat:Connect(function()
     if not IsKiller and not IsSurvivor then
-        continue
+        return
     end
     
     if not HumanoidRootPart then
-        continue
+        return
     end
 
     local Playing = false;
@@ -216,7 +215,7 @@ while true do
     end
 
     if not Playing then
-        continue
+        return
     end
 
     local Target;
@@ -258,7 +257,7 @@ while true do
     Loop(workspace.Map:FindFirstChild("NPCs", true):GetChildren());
 
     if not Target then
-        continue
+        return
     end
 
     local OldVelocity = HumanoidRootPart.Velocity;
@@ -272,6 +271,6 @@ while true do
     ) / (Player:GetNetworkPing() * 2);
 
     HumanoidRootPart.Velocity = NeededVelocity;
-    game:GetService('RunService').RenderStepped:Wait();
+    RunService.RenderStepped:Wait();
     HumanoidRootPart.Velocity = OldVelocity;
-end
+end)
