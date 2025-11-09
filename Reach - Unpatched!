@@ -112,7 +112,8 @@ local AttackAnimations = {
 	'rbxassetid://70371667919898',
 	'rbxassetid://131543461321709',
 	'rbxassetid://106538427162796',
-	'rbxassetid://114506382930939'
+	'rbxassetid://114506382930939',
+    'rbxassetid://91509234639766'
 };
 
 local function DoWallCheck(From, To)
