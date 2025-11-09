@@ -253,8 +253,18 @@ RunService.Heartbeat:Connect(function()
         end
     end
 
-    Loop(workspace.Players:GetDescendants());
-    Loop(workspace.Map:FindFirstChild("NPCs", true):GetChildren());
+    local PlayersFolder = workspace.Players
+    if PlayersFolder:FindFirstChild("Killers") then
+        Loop(PlayersFolder.Killers:GetChildren())
+    end
+    if PlayersFolder:FindFirstChild("Survivors") then
+        Loop(PlayersFolder.Survivors:GetChildren())
+    end
+    
+    local NPCFolder = workspace.Map:FindFirstChild("NPCs", true)
+    if NPCFolder then
+        Loop(NPCFolder:GetChildren())
+    end
 
     if not Target then
         return
