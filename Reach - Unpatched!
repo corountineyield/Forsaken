@@ -219,7 +219,7 @@ RunService.Heartbeat:Connect(function()
     end
 
     local Target;
-    local NearestDist = getgenv().Range or 14;
+    local NearestDist = IsSurvivor and 15 or (getgenv().Range or 14);
 
     local function Loop(T)
         for _,v in T do
