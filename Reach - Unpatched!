@@ -94,17 +94,17 @@ RunService.Heartbeat:Connect(function()
         IsAttacking = false
     end
 
-    local MyTeam = GetPlayerTeam()
-    
-    if not MyTeam then
-        return
-    end
-    
     if not HumanoidRootPart then
         return
     end
 
     if not IsAttacking then
+        return
+    end
+
+    local MyTeam = GetPlayerTeam()
+    
+    if not MyTeam then
         return
     end
 
