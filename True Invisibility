@@ -1,0 +1,38 @@
+--// Dont SKID MY CODE QWERTY:angry
+local plr = game.Players.LocalPlayer
+local char = plr.Character or plr.CharacterAdded:Wait()
+local hrp = char:WaitForChild("HumanoidRootPart")
+
+local rs = game:GetService("ReplicatedStorage")
+local remote = rs:WaitForChild("Modules"):WaitForChild("Network"):WaitForChild("UnreliableRemoteEvent")
+local run = game:GetService("RunService")
+
+local function encode(cf)
+    local c = {cf:GetComponents()}
+    local b = {}
+    for _, v in pairs(c) do
+        local p = string.pack("f", v)
+        for i = 1, #p do
+            table.insert(b, string.byte(p, i))
+        end
+    end
+    return buffer.fromstring(string.char(table.unpack(b)))
+end
+
+local old
+old = hookfunction(remote.FireServer, newcclosure(function(self, ...)
+    local args = {...}
+    if args[1] == "UpdCF" and args[2] and args[2][1] then
+        local realcf = hrp.CFrame
+        local fakecf = realcf - Vector3.new(0, 20, 0)
+        args[2][1] = encode(fakecf)
+        return old(self, unpack(args))
+    end
+    return old(self, ...)
+end))
+
+task.spawn(function()
+    while task.wait() do
+        run.RenderStepped:Wait()
+    end
+end)
