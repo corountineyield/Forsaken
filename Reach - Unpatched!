@@ -118,7 +118,11 @@ local AttackAnimations = {
 };
 
 local function DoWallCheck(From, To)
-    local Raycast = workspace:Raycast(From, (To - From).Unit * (To - From).Magnitude, RaycastParams.new())
+    local Params = RaycastParams.new()
+    Params.FilterType = Enum.RaycastFilterType.Blacklist
+    Params.FilterDescendantsInstances = {Character}
+    
+    local Raycast = workspace:Raycast(From, (To - From).Unit * (To - From).Magnitude, Params)
     if Raycast then
         local Hit = Raycast.Instance
         if Hit and Hit.Parent and (Hit.Parent:FindFirstChild("Humanoid") or Hit.Parent.Parent:FindFirstChild("Humanoid")) then
@@ -136,70 +140,24 @@ local function IsFacing(Target)
     return DotProduct > FaceCheckValue
 end
 
-local function IsPlayerInKillers(TargetPlayer)
+local function GetPlayerTeam()
     local PlayersFolder = workspace.Players
     
-    if PlayersFolder:FindFirstChild("Killers") then
-        for _, PlayerObj in pairs(PlayersFolder.Killers:GetChildren()) do
-            if PlayerObj:GetAttribute("Username") == TargetPlayer then
-                return true
-            end
-        end
+    if PlayersFolder:FindFirstChild("Killers") and PlayersFolder.Killers:FindFirstChild(Character.Name) then
+        return "Killer"
+    elseif PlayersFolder:FindFirstChild("Survivors") and PlayersFolder.Survivors:FindFirstChild(Character.Name) then
+        return "Survivor"
     end
     
-    return false
-end
-
-local function IsPlayerInSurvivors(TargetPlayer)
-    local PlayersFolder = workspace.Players
-    
-    if PlayersFolder:FindFirstChild("Survivors") then
-        for _, PlayerObj in pairs(PlayersFolder.Survivors:GetChildren()) do
-            if PlayerObj:GetAttribute("Username") == TargetPlayer then
-                return true
-            end
-        end
-    end
-    
-    return false
+    return nil
 end
 
 local RNG = Random.new();
-local IsKiller = false;
-local IsSurvivor = false;
-
-task.spawn(function()
-    while true do
-        local PlayersFolder = workspace.Players
-        local PlayerName = Player.Name
-        
-        IsKiller = false
-        IsSurvivor = false
-        
-        if PlayersFolder:FindFirstChild("Killers") then
-            for _, PlayerObj in pairs(PlayersFolder.Killers:GetChildren()) do
-                if PlayerObj:GetAttribute("Username") == PlayerName then
-                    IsKiller = true
-                    break
-                end
-            end
-        end
-        
-        if PlayersFolder:FindFirstChild("Survivors") then
-            for _, PlayerObj in pairs(PlayersFolder.Survivors:GetChildren()) do
-                if PlayerObj:GetAttribute("Username") == PlayerName then
-                    IsSurvivor = true
-                    break
-                end
-            end
-        end
-        
-        task.wait(1)
-    end
-end)
 
 RunService.Heartbeat:Connect(function()
-    if not IsKiller and not IsSurvivor then
+    local MyTeam = GetPlayerTeam()
+    
+    if not MyTeam then
         return
     end
     
@@ -219,7 +177,7 @@ RunService.Heartbeat:Connect(function()
     end
 
     local Target;
-    local NearestDist = IsSurvivor and 15 or (getgenv().Range or 14);
+    local NearestDist = MyTeam == "Survivor" and 15 or (getgenv().Range or 14);
 
     local function Loop(T)
         for _,v in T do
@@ -235,12 +193,12 @@ RunService.Heartbeat:Connect(function()
                 local PassedTeamCheck = true
                 
                 if TeamCheck then
-                    local TargetPlayer = Players:GetPlayerFromCharacter(v)
-                    if TargetPlayer then
-                        if IsKiller then
-                            PassedTeamCheck = not IsPlayerInKillers(TargetPlayer.Name)
-                        elseif IsSurvivor then
-                            PassedTeamCheck = IsPlayerInKillers(TargetPlayer.Name)
+                    local TargetTeamFolder = v.Parent
+                    if TargetTeamFolder then
+                        if MyTeam == "Killer" then
+                            PassedTeamCheck = TargetTeamFolder.Name ~= "Killers"
+                        elseif MyTeam == "Survivor" then
+                            PassedTeamCheck = TargetTeamFolder.Name == "Killers"
                         end
                     end
                 end
