@@ -18,7 +18,7 @@ end);
 local WallCheck = getgenv().WallCheck or true;
 local FaceCheck = getgenv().FaceCheck or true;
 local TeamCheck = getgenv().TeamCheck or true;
-local FaceCheckValue = getgenv().FaceCheckValue or 14;
+local FaceCheckValue = getgenv().FaceCheckValue or 0;
 
 local function DoWallCheck(From, To)
     local Params = RaycastParams.new()
@@ -72,7 +72,6 @@ local RNG = Random.new();
 local IsKiller = false;
 local IsSurvivor = false;
 local IsAttacking = false;
-local AttackStart = 0;
 
 task.spawn(function()
     while true do
@@ -119,15 +118,10 @@ Remote.OnClientEvent:Connect(function(Action, Data)
         AbilityName == "Dagger" or
         AbilityName == "Block") then
         IsAttacking = true
-        AttackStart = tick()
     end
 end)
 
 RunService.Heartbeat:Connect(function()
-    if IsAttacking and (tick() - AttackStart > 1.5) then
-        IsAttacking = false
-    end
-
     if not IsKiller and not IsSurvivor then
         return
     end
@@ -140,8 +134,10 @@ RunService.Heartbeat:Connect(function()
         return
     end
 
+    IsAttacking = false
+
     local Target;
-    local NearestDist = IsSurvivor and 15 or (getgenv().Range or 14);
+    local NearestDist = getgenv().Range or 14;
 
     local function Loop(T)
         for _,V in T do
