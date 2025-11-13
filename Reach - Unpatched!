@@ -18,7 +18,7 @@ end);
 local WallCheck = getgenv().WallCheck or true;
 local FaceCheck = getgenv().FaceCheck or true;
 local TeamCheck = getgenv().TeamCheck or true;
-local FaceCheckValue = getgenv().FaceCheckValue or 0;
+local FaceCheckValue = getgenv().FaceCheckValue or 14;
 
 local function DoWallCheck(From, To)
     local Params = RaycastParams.new()
@@ -43,16 +43,18 @@ local function IsFacing(Target)
     return DotProduct > FaceCheckValue
 end
 
-local function GetPlayerTeam()
+local function IsPlayerInKillers(TargetPlayer)
     local PlayersFolder = workspace.Players
     
-    if PlayersFolder:FindFirstChild("Killers") and PlayersFolder.Killers:FindFirstChild(Character.Name) then
-        return "Killer"
-    elseif PlayersFolder:FindFirstChild("Survivors") and PlayersFolder.Survivors:FindFirstChild(Character.Name) then
-        return "Survivor"
+    if PlayersFolder:FindFirstChild("Killers") then
+        for _, PlayerObj in pairs(PlayersFolder.Killers:GetChildren()) do
+            if PlayerObj:GetAttribute("Username") == TargetPlayer then
+                return true
+            end
+        end
     end
     
-    return nil
+    return false
 end
 
 local function GetAbilityName(V)
@@ -67,8 +69,40 @@ local function CleanName(Name)
 end
 
 local RNG = Random.new();
+local IsKiller = false;
+local IsSurvivor = false;
 local IsAttacking = false;
 local AttackStart = 0;
+
+task.spawn(function()
+    while true do
+        local PlayersFolder = workspace.Players
+        local PlayerName = Player.Name
+        
+        IsKiller = false
+        IsSurvivor = false
+        
+        if PlayersFolder:FindFirstChild("Killers") then
+            for _, PlayerObj in pairs(PlayersFolder.Killers:GetChildren()) do
+                if PlayerObj:GetAttribute("Username") == PlayerName then
+                    IsKiller = true
+                    break
+                end
+            end
+        end
+        
+        if PlayersFolder:FindFirstChild("Survivors") then
+            for _, PlayerObj in pairs(PlayersFolder.Survivors:GetChildren()) do
+                if PlayerObj:GetAttribute("Username") == PlayerName then
+                    IsSurvivor = true
+                    break
+                end
+            end
+        end
+        
+        task.wait(1)
+    end
+end)
 
 local Remote = Rep:WaitForChild("Modules"):WaitForChild("Network"):WaitForChild("RemoteEvent")
 
@@ -94,6 +128,10 @@ RunService.Heartbeat:Connect(function()
         IsAttacking = false
     end
 
+    if not IsKiller and not IsSurvivor then
+        return
+    end
+    
     if not HumanoidRootPart then
         return
     end
@@ -102,14 +140,8 @@ RunService.Heartbeat:Connect(function()
         return
     end
 
-    local MyTeam = GetPlayerTeam()
-    
-    if not MyTeam then
-        return
-    end
-
     local Target;
-    local NearestDist = MyTeam == "Survivor" and 15 or (getgenv().Range or 14);
+    local NearestDist = IsSurvivor and 15 or (getgenv().Range or 14);
 
     local function Loop(T)
         for _,V in T do
@@ -125,12 +157,12 @@ RunService.Heartbeat:Connect(function()
                 local PassedTeamCheck = true
                 
                 if TeamCheck then
-                    local TargetTeamFolder = V.Parent
-                    if TargetTeamFolder then
-                        if MyTeam == "Killer" then
-                            PassedTeamCheck = TargetTeamFolder.Name ~= "Killers"
-                        elseif MyTeam == "Survivor" then
-                            PassedTeamCheck = TargetTeamFolder.Name == "Killers"
+                    local TargetPlayer = Players:GetPlayerFromCharacter(V)
+                    if TargetPlayer then
+                        if IsKiller then
+                            PassedTeamCheck = not IsPlayerInKillers(TargetPlayer.Name)
+                        elseif IsSurvivor then
+                            PassedTeamCheck = IsPlayerInKillers(TargetPlayer.Name)
                         end
                     end
                 end
