@@ -3,17 +3,16 @@ repeat task.wait() until game:IsLoaded();
 local Players = game:GetService('Players');
 local RunService = game:GetService('RunService');
 local Player = Players.LocalPlayer;
-local PlayerGui = Player:WaitForChild("PlayerGui");
 
 local Character;
 local Humanoid;
-local Animator;
 local HumanoidRootPart;
 
 local WallCheck = getgenv().WallCheck or true;
 local FaceCheck = getgenv().FaceCheck or true;
 local TeamCheck = getgenv().TeamCheck or true;
 local FaceCheckValue = getgenv().FaceCheckValue or 0;
+local Range = getgenv().Range or 14;
 
 local AttackAnimations = {
 	'rbxassetid://131430497821198',
@@ -111,182 +110,131 @@ local AttackAnimations = {
     'rbxassetid://110400453990786'
 };
 
-local function DoWallCheck(From, To)
-    local Raycast = workspace:Raycast(From, (To - From).Unit * (To - From).Magnitude, RaycastParams.new())
-    if Raycast then
-        local Hit = Raycast.Instance
-        if Hit and Hit.Parent and (Hit.Parent:FindFirstChild("Humanoid") or Hit.Parent.Parent:FindFirstChild("Humanoid")) then
-            return false
-        end
-        return true
-    end
-    return false
-end
-
-local function IsFacing(Target)
-    local LookDirection = HumanoidRootPart.CFrame.LookVector
-    local DirectionToTarget = (Target.HumanoidRootPart.Position - HumanoidRootPart.Position).Unit
-    local DotProduct = LookDirection:Dot(DirectionToTarget)
-    return DotProduct > FaceCheckValue
-end
-
-local function IsPlayerInKillers(TargetPlayer)
-    local PlayersFolder = workspace.Players
-    
-    if PlayersFolder:FindFirstChild("Killers") then
-        for _, PlayerObj in pairs(PlayersFolder.Killers:GetChildren()) do
-            if PlayerObj:GetAttribute("Username") == TargetPlayer then
-                return true
-            end
-        end
-    end
-    
-    return false
-end
-
-local function IsPlayerInSurvivors(TargetPlayer)
-    local PlayersFolder = workspace.Players
-    
-    if PlayersFolder:FindFirstChild("Survivors") then
-        for _, PlayerObj in pairs(PlayersFolder.Survivors:GetChildren()) do
-            if PlayerObj:GetAttribute("Username") == TargetPlayer then
-                return true
-            end
-        end
-    end
-    
-    return false
-end
-
+local RaycastParams = RaycastParams.new();
 local RNG = Random.new();
-local IsKiller = false;
-local IsSurvivor = false;
+
+local function DoWallCheck(From, To)
+    local Direction = To - From;
+    local Raycast = workspace:Raycast(From, Direction, RaycastParams);
+    if Raycast then
+        local Hit = Raycast.Instance;
+        local Parent = Hit.Parent;
+        if Parent and (Parent:FindFirstChild("Humanoid") or Parent.Parent and Parent.Parent:FindFirstChild("Humanoid")) then
+            return false;
+        end
+        return true;
+    end
+    return false;
+end
+
+local function IsFacing(TargetPos)
+    local Direction = (TargetPos - HumanoidRootPart.Position).Unit;
+    return HumanoidRootPart.CFrame.LookVector:Dot(Direction) > FaceCheckValue;
+end
 
 task.spawn(function()
     while true do
-        if Player.Character then
-            Character = Player.Character;
-            local TempHumanoid = Character:FindFirstChild("Humanoid");
-            local TempAnimator = TempHumanoid and TempHumanoid:FindFirstChild("Animator");
-            local TempHRP = Character:FindFirstChild("HumanoidRootPart");
-            
-            if TempHumanoid and TempAnimator and TempHRP then
-                Humanoid = TempHumanoid;
-                Animator = TempAnimator;
-                HumanoidRootPart = TempHRP;
-            end
+        if not Player.Character then
+            task.wait(0.5);
+            continue;
         end
         
-        local PlayersFolder = workspace.Players
-        local PlayerName = Player.Name
+        Character = Player.Character;
+        Humanoid = Character:FindFirstChild("Humanoid");
+        HumanoidRootPart = Character:FindFirstChild("HumanoidRootPart");
         
-        IsKiller = false
-        IsSurvivor = false
-        
-        if PlayersFolder:FindFirstChild("Killers") then
-            for _, PlayerObj in pairs(PlayersFolder.Killers:GetChildren()) do
-                if PlayerObj:GetAttribute("Username") == PlayerName then
-                    IsKiller = true
-                    break
-                end
-            end
+        if not Humanoid or not HumanoidRootPart then
+            task.wait(0.5);
+            continue;
         end
         
-        if PlayersFolder:FindFirstChild("Survivors") then
-            for _, PlayerObj in pairs(PlayersFolder.Survivors:GetChildren()) do
-                if PlayerObj:GetAttribute("Username") == PlayerName then
-                    IsSurvivor = true
-                    break
-                end
-            end
-        end
+        local MyTeam = Character.Parent;
+        local IsKiller = MyTeam and MyTeam.Name == "Killers";
+        local IsSurvivor = MyTeam and MyTeam.Name == "Survivors";
         
         if not IsKiller and not IsSurvivor then
-            task.wait(1)
-            continue
-        end
-        
-        if not HumanoidRootPart or not Humanoid then
-            task.wait(1)
-            continue
+            task.wait(0.5);
+            continue;
         end
 
         local Playing = false;
-        for _,v in Humanoid:GetPlayingAnimationTracks() do
-            if table.find(AttackAnimations, v.Animation.AnimationId) and (v.TimePosition / v.Length < 0.75) then
+        for _, Track in Humanoid:GetPlayingAnimationTracks() do
+            if table.find(AttackAnimations, Track.Animation.AnimationId) and (Track.TimePosition / Track.Length < 0.75) then
                 Playing = true;
+                break;
             end
         end
 
         if not Playing then
-            task.wait()
-            continue
+            task.wait();
+            continue;
         end
 
         local Target;
-        local NearestDist = getgenv().Range or 14;
+        local NearestDist = Range;
+        local MyPos = HumanoidRootPart.Position;
 
-        local function Loop(T)
-            for _,v in T do
-                if v == Character or not v:FindFirstChild("HumanoidRootPart") then
-                    continue;
-                end
-
-                local Dist = (v.HumanoidRootPart.Position - HumanoidRootPart.Position).Magnitude;
-
-                if Dist < NearestDist then
-                    local PassedWallCheck = not WallCheck or not DoWallCheck(HumanoidRootPart.Position, v.HumanoidRootPart.Position)
-                    local PassedFaceCheck = not FaceCheck or IsFacing(v)
-                    local PassedTeamCheck = true
-                    
-                    if TeamCheck then
-                        local TargetPlayer = Players:GetPlayerFromCharacter(v)
-                        if TargetPlayer then
-                            if IsKiller then
-                                PassedTeamCheck = not IsPlayerInKillers(TargetPlayer.Name)
-                            elseif IsSurvivor then
-                                PassedTeamCheck = IsPlayerInKillers(TargetPlayer.Name)
-                            end
+        local PlayersFolder = workspace.Players;
+        
+        if IsKiller and PlayersFolder:FindFirstChild("Survivors") then
+            for _, v in PlayersFolder.Survivors:GetChildren() do
+                local TargetHRP = v:FindFirstChild("HumanoidRootPart");
+                if TargetHRP then
+                    local Dist = (TargetHRP.Position - MyPos).Magnitude;
+                    if Dist < NearestDist then
+                        if (not WallCheck or not DoWallCheck(MyPos, TargetHRP.Position)) and 
+                           (not FaceCheck or IsFacing(TargetHRP.Position)) then
+                            NearestDist = Dist;
+                            Target = TargetHRP;
                         end
                     end
-                    
-                    if PassedWallCheck and PassedFaceCheck and PassedTeamCheck then
-                        NearestDist = Dist;
-                        Target = v;
+                end
+            end
+        end
+        
+        if IsSurvivor and PlayersFolder:FindFirstChild("Killers") then
+            for _, v in PlayersFolder.Killers:GetChildren() do
+                local TargetHRP = v:FindFirstChild("HumanoidRootPart");
+                if TargetHRP then
+                    local Dist = (TargetHRP.Position - MyPos).Magnitude;
+                    if Dist < NearestDist then
+                        if (not WallCheck or not DoWallCheck(MyPos, TargetHRP.Position)) and 
+                           (not FaceCheck or IsFacing(TargetHRP.Position)) then
+                            NearestDist = Dist;
+                            Target = TargetHRP;
+                        end
+                    end
+                end
+            end
+        end
+        
+        local NPCFolder = workspace.Map:FindFirstChild("NPCs", true);
+        if NPCFolder then
+            for _, v in NPCFolder:GetChildren() do
+                local TargetHRP = v:FindFirstChild("HumanoidRootPart");
+                if TargetHRP then
+                    local Dist = (TargetHRP.Position - MyPos).Magnitude;
+                    if Dist < NearestDist then
+                        if (not WallCheck or not DoWallCheck(MyPos, TargetHRP.Position)) and 
+                           (not FaceCheck or IsFacing(TargetHRP.Position)) then
+                            NearestDist = Dist;
+                            Target = TargetHRP;
+                        end
                     end
                 end
             end
         end
 
-        local PlayersFolder = workspace.Players
-        if PlayersFolder:FindFirstChild("Killers") then
-            Loop(PlayersFolder.Killers:GetChildren())
-        end
-        if PlayersFolder:FindFirstChild("Survivors") then
-            Loop(PlayersFolder.Survivors:GetChildren())
-        end
-        
-        local NPCFolder = workspace.Map:FindFirstChild("NPCs", true)
-        if NPCFolder then
-            Loop(NPCFolder:GetChildren())
-        end
-
         if Target then
+            local Ping = Player:GetNetworkPing();
             local OldVelocity = HumanoidRootPart.Velocity;
-            local NeededVelocity =
-            (Target.HumanoidRootPart.Position + Vector3.new(
-                RNG:NextNumber(-1.5, 1.5),
-                0,
-                RNG:NextNumber(-1.5, 1.5)
-            ) + (Target.HumanoidRootPart.Velocity * (Player:GetNetworkPing() * 1.25))
-                - HumanoidRootPart.Position
-            ) / (Player:GetNetworkPing() * 2);
-
+            local NeededVelocity = (Target.Position + Vector3.new(RNG:NextNumber(-1.5, 1.5), 0, RNG:NextNumber(-1.5, 1.5)) + (Target.Velocity * (Ping * 1.25)) - MyPos) / (Ping * 2);
+            
             HumanoidRootPart.Velocity = NeededVelocity;
             RunService.RenderStepped:Wait();
             HumanoidRootPart.Velocity = OldVelocity;
         end
         
-        task.wait()
+        task.wait();
     end
 end)
