@@ -106,8 +106,12 @@ local AttackAnimations = {
 	'rbxassetid://131543461321709',
 	'rbxassetid://106538427162796',
 	'rbxassetid://114506382930939',
-    'rbxassetid://91509234639766',
-    'rbxassetid://110400453990786'
+	'rbxassetid://91509234639766',
+	'rbxassetid://110400453990786',
+	'rbxassetid://99829427721752',
+	'rbxassetid://126171487400618',
+	'rbxassetid://90620531468240',
+	'rbxassetid://70948173568515'
 };
 
 local RaycastParams = RaycastParams.new();
