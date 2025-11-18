@@ -111,7 +111,13 @@ local AttackAnimations = {
 	'rbxassetid://99829427721752',
 	'rbxassetid://126171487400618',
 	'rbxassetid://90620531468240',
-	'rbxassetid://70948173568515'
+	'rbxassetid://70948173568515',
+	'rbxassetid://81299297965542',
+	'rbxassetid://124438877557433',
+	'rbxassetid://130254228409927',
+	'rbxassetid://77375846492436',
+	'rbxassetid://94958041603347',
+	'rbxassetid://125403313786645'
 };
 
 local RaycastParams = RaycastParams.new();
@@ -155,6 +161,9 @@ task.spawn(function()
         local MyTeam = Character.Parent;
         local IsKiller = MyTeam and MyTeam.Name == "Killers";
         local IsSurvivor = MyTeam and MyTeam.Name == "Survivors";
+        
+        -- Set range based on role: 15 for survivors only, otherwise use default
+        local Range = (IsSurvivor and not IsKiller) and 15 or DefaultRange;
         
         if not IsKiller and not IsSurvivor then
             task.wait(0.5);
@@ -237,6 +246,8 @@ task.spawn(function()
             HumanoidRootPart.Velocity = NeededVelocity;
             RunService.RenderStepped:Wait();
             HumanoidRootPart.Velocity = OldVelocity;
+            
+            task.wait(0.5);
         end
         
         task.wait();
