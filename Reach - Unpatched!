@@ -12,7 +12,7 @@ local WallCheck = getgenv().WallCheck or true;
 local FaceCheck = getgenv().FaceCheck or true;
 local TeamCheck = getgenv().TeamCheck or true;
 local FaceCheckValue = getgenv().FaceCheckValue or 0;
-local Range = getgenv().Range or 14;
+local DefaultRange = getgenv().Range or 14;
 
 local AttackAnimations = {
 	'rbxassetid://131430497821198',
