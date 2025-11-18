@@ -1,0 +1,262 @@
+-- compiled with roblox-typescript v3.0.0
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local DelayTime = tonumber(arg and arg[1]) or 4.1
+
+_G.SetHintDelay = function(Seconds)
+	DelayTime = tonumber(Seconds) or DelayTime
+end
+
+-- ============================
+-- helper functions
+-- ============================
+local function GetDirection(CurrentRow, CurrentCol, OtherRow, OtherCol)
+	if OtherRow < CurrentRow then
+		return "up"
+	end
+	if OtherRow > CurrentRow then
+		return "down"
+	end
+	if OtherCol < CurrentCol then
+		return "left"
+	end
+	if OtherCol > CurrentCol then
+		return "right"
+	end
+end
+
+local function GetConnections(Prev, Curr, NextNode)
+	local Connections = {}
+	if Prev and Curr then
+		local Dir = GetDirection(Curr.row, Curr.col, Prev.row, Prev.col)
+		if Dir == "up" then
+			Dir = "down"
+		elseif Dir == "down" then
+			Dir = "up"
+		elseif Dir == "left" then
+			Dir = "right"
+		elseif Dir == "right" then
+			Dir = "left"
+		end
+		if Dir ~= "" and Dir then
+			Connections[Dir] = true
+		end
+	end
+	if NextNode and Curr then
+		local Dir = GetDirection(Curr.row, Curr.col, NextNode.row, NextNode.col)
+		if Dir ~= "" and Dir then
+			Connections[Dir] = true
+		end
+	end
+	return Connections
+end
+
+local function IsNeighbourLocal(R1, C1, R2, C2)
+	if R2 == R1 - 1 and C2 == C1 then
+		return "up"
+	end
+	if R2 == R1 + 1 and C2 == C1 then
+		return "down"
+	end
+	if R2 == R1 and C2 == C1 - 1 then
+		return "left"
+	end
+	if R2 == R1 and C2 == C1 + 1 then
+		return "right"
+	end
+	return false
+end
+
+local function CoordKey(Node)
+	return `{Node.row}-{Node.col}`
+end
+
+local function OrderPathFromEndpoints(Path, Endpoints)
+	if not Path or #Path == 0 then
+		return Path
+	end
+	local StartEndpoint
+	for _, Ep in Endpoints or {} do
+		for _, N in Path do
+			if N.row == Ep.row and N.col == Ep.col then
+				StartEndpoint = {row = Ep.row, col = Ep.col}
+				break
+			end
+		end
+		if StartEndpoint then break end
+	end
+	if not StartEndpoint then
+		local InPath = {}
+		for _, N in Path do
+			InPath[CoordKey(N)] = N
+		end
+		for _, N in Path do
+			local Neighbours = 0
+			local Dirs = {{N.row - 1, N.col}, {N.row + 1, N.col}, {N.row, N.col - 1}, {N.row, N.col + 1}}
+			for _, Dir in Dirs do
+				local R, C = Dir[1], Dir[2]
+				if InPath[`{R}-{C}`] ~= nil then
+					Neighbours += 1
+				end
+			end
+			if Neighbours == 1 then
+				StartEndpoint = {row = N.row, col = N.col}
+				break
+			end
+		end
+	end
+	if not StartEndpoint then
+		StartEndpoint = {row = Path[1].row, col = Path[1].col}
+	end
+	local Remaining = {}
+	for _, N in Path do
+		Remaining[CoordKey(N)] = {row = N.row, col = N.col}
+	end
+	local Ordered = {}
+	local Current = {row = StartEndpoint.row, col = StartEndpoint.col}
+	table.insert(Ordered, table.clone(Current))
+	Remaining[CoordKey(Current)] = nil
+	while true do
+		local Size = 0
+		for _ in Remaining do Size += 1 end
+		if not (Size > 0) then break end
+		local FoundNext = false
+		for Key, Node in Remaining do
+			local Value = IsNeighbourLocal(Current.row, Current.col, Node.row, Node.col)
+			if Value ~= "" and Value then
+				table.insert(Ordered, table.clone(Node))
+				Remaining[Key] = nil
+				Current = Node
+				FoundNext = true
+				break
+			end
+		end
+		if not FoundNext then return Path end
+	end
+	return Ordered
+end
+
+-- ============================
+-- hint system (rewritten to be and look smooth ingame yay)
+-- ============================
+local HintSystem = {}
+local IsAnimating = false
+
+function HintSystem:DrawSolutionOneByOne(Puzzle, TotalDuration)
+	TotalDuration = TotalDuration or DelayTime
+	if IsAnimating or not Puzzle or not Puzzle.Solution then return end
+	IsAnimating = true
+
+	-- calculate total nodes and delay per node
+	local TotalNodes = 0
+	for _, Path in ipairs(Puzzle.Solution) do
+		TotalNodes += #Path
+	end
+	if TotalNodes == 0 then
+		IsAnimating = false
+		return
+	end
+
+	local DelayPerNode = TotalDuration / TotalNodes
+	local AccumulatedTime = 0
+	local GlobalNodeIndex = 0
+
+	-- shuffle path order (same as original)
+	local Indices = {}
+	for i = 1, #Puzzle.Solution do
+		table.insert(Indices, i)
+	end
+	for i = #Indices - 1, 2, -1 do
+		local j = math.random(1, i)
+		Indices[i + 1], Indices[j + 1] = Indices[j + 1], Indices[i + 1]
+	end
+
+	-- track cumulative sizes for smooth indexing
+	local Cumulative = 0
+	local PathSizes = {}
+	for _, ColorIndex in ipairs(Indices) do
+		local PathSize = #Puzzle.Solution[ColorIndex]
+		table.insert(PathSizes, {ColorIndex = ColorIndex, Size = PathSize, Start = Cumulative})
+		Cumulative += PathSize
+	end
+
+	local Connection
+	Connection = RunService.Heartbeat:Connect(function(Dt)
+		AccumulatedTime += Dt
+		
+		if AccumulatedTime >= DelayPerNode then
+			AccumulatedTime = 0
+			GlobalNodeIndex += 1
+
+			if GlobalNodeIndex > TotalNodes then
+				Connection:Disconnect()
+				Puzzle:checkForWin()
+				IsAnimating = false
+				return
+			end
+
+			-- find current path and local index
+			local ColorIndex, LocalIndex
+			for _, PathInfo in ipairs(PathSizes) do
+				if GlobalNodeIndex <= PathInfo.Start + PathInfo.Size then
+					ColorIndex = PathInfo.ColorIndex
+					LocalIndex = GlobalNodeIndex - PathInfo.Start
+					break
+				end
+			end
+
+			-- get ordered path (same as original but it works ig)
+			local Path = Puzzle.Solution[ColorIndex]
+			local Endpoints = Puzzle.targetPairs[ColorIndex]
+			local OrderedPath = OrderPathFromEndpoints(Path, Endpoints)
+
+			-- initialize paths array if needed
+			Puzzle.paths[ColorIndex] = Puzzle.paths[ColorIndex] or {}
+
+			-- add node (same as original)
+			local Node = OrderedPath[LocalIndex]
+			table.insert(Puzzle.paths[ColorIndex], {row = Node.row, col = Node.col})
+
+			-- calculate connections (same as original)
+			local Prev = OrderedPath[LocalIndex - 1]
+			local NextNode = OrderedPath[LocalIndex + 1]
+			Puzzle.gridConnections = Puzzle.gridConnections or {}
+			Puzzle.gridConnections[`{Node.row}-{Node.col}`] = GetConnections(Prev, Node, NextNode)
+
+			Puzzle:updateGui()
+		end
+	end)
+end
+
+-- ============================
+-- hook flowgame for auto gen (exactly like original because i got so lazy yo)
+-- ============================
+local Result = ReplicatedStorage:WaitForChild("Modules"):FindFirstChild("Misc")
+if Result then
+	Result = Result:FindFirstChild("FlowGameManager")
+	if Result then
+		Result = Result:FindFirstChild("FlowGame")
+	end
+end
+local Bb = Result
+if Bb then
+	local FlowGameModule = require(Bb)
+	local Old = FlowGameModule.new
+	FlowGameModule.new = function(...)
+		local Args = {...}
+		local Output = {Old(unpack(Args))}
+		local Puzzle = Output[1]
+		task.spawn(function()
+			if Puzzle and Puzzle.Solution then
+				local TotalNodes = 0
+				for _, Path in ipairs(Puzzle.Solution) do
+					TotalNodes += #Path
+				end
+				local PerNodeDelay = DelayTime / TotalNodes
+				HintSystem:DrawSolutionOneByOne(Puzzle, DelayTime)
+			end
+		end)
+		return Puzzle
+	end
+end
