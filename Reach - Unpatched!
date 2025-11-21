@@ -247,7 +247,7 @@ task.spawn(function()
             RunService.RenderStepped:Wait();
             HumanoidRootPart.Velocity = OldVelocity;
             
-            task.wait(0.05);
+            task.wait(0.04);
         end
         
         task.wait();
