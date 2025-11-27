@@ -120,13 +120,6 @@ local AttackAnimations = {
 	'rbxassetid://125403313786645'
 };
 
-local TwoTimeAnimations = {
-	'rbxassetid://86545133269813',
-	'rbxassetid://89448354637442',
-	'rbxassetid://106086955212611',
-	'rbxassetid://107640065977686'
-};
-
 local RaycastParams = RaycastParams.new();
 local RNG = Random.new();
 
@@ -149,15 +142,9 @@ local function IsFacing(TargetPos)
     return HumanoidRootPart.CFrame.LookVector:Dot(Direction) > FaceCheckValue;
 end
 
-local function IsTwoTimeAnimation(AnimId)
-    return table.find(TwoTimeAnimations, AnimId) ~= nil;
-end
-
-task.spawn(function()
-    while true do
+RunService.Heartbeat:Connect(function()
         if not Player.Character then
-            task.wait(0.5);
-            continue;
+            return;
         end
         
         Character = Player.Character;
@@ -165,8 +152,7 @@ task.spawn(function()
         HumanoidRootPart = Character:FindFirstChild("HumanoidRootPart");
         
         if not Humanoid or not HumanoidRootPart then
-            task.wait(0.5);
-            continue;
+            return;
         end
         
         local MyTeam = Character.Parent;
@@ -176,25 +162,19 @@ task.spawn(function()
         local Range = (IsSurvivor and not IsKiller) and 15 or DefaultRange;
         
         if not IsKiller and not IsSurvivor then
-            task.wait(0.5);
-            continue;
+            return;
         end
 
         local Playing = false;
-        local IsTwoTime = false;
         for _, Track in Humanoid:GetPlayingAnimationTracks() do
             if table.find(AttackAnimations, Track.Animation.AnimationId) and (Track.TimePosition / Track.Length < 0.75) then
                 Playing = true;
-                if IsTwoTimeAnimation(Track.Animation.AnimationId) then
-                    IsTwoTime = true;
-                end
                 break;
             end
         end
 
         if not Playing then
-            task.wait();
-            continue;
+            return;
         end
 
         local Target;
@@ -255,25 +235,12 @@ task.spawn(function()
         if Target then
             local Ping = Player:GetNetworkPing();
             local OldVelocity = HumanoidRootPart.Velocity;
-            local NeededVelocity;
-            
-            if IsTwoTime then
-                local TargetLookVector = Target.CFrame.LookVector;
-                local BehindPosition = Target.Position - (TargetLookVector * 3);
-                NeededVelocity = (BehindPosition + Vector3.new(RNG:NextNumber(-1.5, 1.5), 0, RNG:NextNumber(-1.5, 1.5)) - MyPos) / (Ping * 1);
-            else
-                NeededVelocity = (Target.Position + Vector3.new(RNG:NextNumber(-1.5, 1.5), 0, RNG:NextNumber(-1.5, 1.5)) + (Target.Velocity * (Ping * 1.25)) - MyPos) / (Ping * 2);
-            end
+            local NeededVelocity = (Target.Position + Vector3.new(RNG:NextNumber(-1.5, 1.5), 0, RNG:NextNumber(-1.5, 1.5)) + (Target.Velocity * (Ping * 1.25)) - MyPos) / (Ping * 2);
             
             HumanoidRootPart.Velocity = NeededVelocity;
             RunService.RenderStepped:Wait();
             HumanoidRootPart.Velocity = OldVelocity;
             
-            if not IsTwoTime then
-                task.wait(0.04);
-            end
+            task.wait(0.04);
         end
-        
-        task.wait();
-    end
 end)
