@@ -152,7 +152,8 @@ RunService.Heartbeat:Connect(function()
         HumanoidRootPart = Character:FindFirstChild("HumanoidRootPart");
         
         if not Humanoid or not HumanoidRootPart then
-            return;
+            task.wait(0.5);
+            continue;
         end
         
         local MyTeam = Character.Parent;
@@ -162,7 +163,8 @@ RunService.Heartbeat:Connect(function()
         local Range = (IsSurvivor and not IsKiller) and 15 or DefaultRange;
         
         if not IsKiller and not IsSurvivor then
-            return;
+            task.wait(0.5);
+            continue;
         end
 
         local Playing = false;
@@ -174,7 +176,8 @@ RunService.Heartbeat:Connect(function()
         end
 
         if not Playing then
-            return;
+            task.wait();
+            continue;
         end
 
         local Target;
@@ -243,4 +246,7 @@ RunService.Heartbeat:Connect(function()
             
             task.wait(0.04);
         end
+        
+        task.wait();
+    end
 end)
