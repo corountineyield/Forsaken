@@ -120,6 +120,13 @@ local AttackAnimations = {
 	'rbxassetid://125403313786645'
 };
 
+local TwoTimeAnimations = {
+	'rbxassetid://86545133269813',
+	'rbxassetid://89448354637442',
+	'rbxassetid://106086955212611',
+	'rbxassetid://107640065977686'
+};
+
 local RaycastParams = RaycastParams.new();
 local RNG = Random.new();
 
@@ -142,6 +149,10 @@ local function IsFacing(TargetPos)
     return HumanoidRootPart.CFrame.LookVector:Dot(Direction) > FaceCheckValue;
 end
 
+local function IsTwoTimeAnimation(AnimId)
+    return table.find(TwoTimeAnimations, AnimId) ~= nil;
+end
+
 task.spawn(function()
     while true do
         if not Player.Character then
@@ -162,7 +173,6 @@ task.spawn(function()
         local IsKiller = MyTeam and MyTeam.Name == "Killers";
         local IsSurvivor = MyTeam and MyTeam.Name == "Survivors";
         
-        -- Set range based on role: 15 for survivors only, otherwise use default
         local Range = (IsSurvivor and not IsKiller) and 15 or DefaultRange;
         
         if not IsKiller and not IsSurvivor then
@@ -171,9 +181,13 @@ task.spawn(function()
         end
 
         local Playing = false;
+        local IsTwoTime = false;
         for _, Track in Humanoid:GetPlayingAnimationTracks() do
             if table.find(AttackAnimations, Track.Animation.AnimationId) and (Track.TimePosition / Track.Length < 0.75) then
                 Playing = true;
+                if IsTwoTimeAnimation(Track.Animation.AnimationId) then
+                    IsTwoTime = true;
+                end
                 break;
             end
         end
@@ -241,13 +255,23 @@ task.spawn(function()
         if Target then
             local Ping = Player:GetNetworkPing();
             local OldVelocity = HumanoidRootPart.Velocity;
-            local NeededVelocity = (Target.Position + Vector3.new(RNG:NextNumber(-1.5, 1.5), 0, RNG:NextNumber(-1.5, 1.5)) + (Target.Velocity * (Ping * 1.25)) - MyPos) / (Ping * 2);
+            local NeededVelocity;
+            
+            if IsTwoTime then
+                local TargetLookVector = Target.CFrame.LookVector;
+                local BehindPosition = Target.Position - (TargetLookVector * 3);
+                NeededVelocity = (BehindPosition + Vector3.new(RNG:NextNumber(-1.5, 1.5), 0, RNG:NextNumber(-1.5, 1.5)) - MyPos) / (Ping * 1);
+            else
+                NeededVelocity = (Target.Position + Vector3.new(RNG:NextNumber(-1.5, 1.5), 0, RNG:NextNumber(-1.5, 1.5)) + (Target.Velocity * (Ping * 1.25)) - MyPos) / (Ping * 2);
+            end
             
             HumanoidRootPart.Velocity = NeededVelocity;
             RunService.RenderStepped:Wait();
             HumanoidRootPart.Velocity = OldVelocity;
             
-            task.wait(0.04);
+            if not IsTwoTime then
+                task.wait(0.04);
+            end
         end
         
         task.wait();
